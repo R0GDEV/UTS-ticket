@@ -34,7 +34,7 @@ const stationRoutes: Route[] = [
   via: "DIVA",
   distance: "80 km",
   travelTime: 120,
-}
+},
 
   {
     id: 4,
