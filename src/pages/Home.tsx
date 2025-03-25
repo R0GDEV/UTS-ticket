@@ -16,25 +16,7 @@ interface Route {
   travelTime: number; // Travel time in minutes
 }
 const stationRoutes: Route[] = [
- {
-  id: 8,
-  source: {
-    stationCode: "S",
-    stationNameHindi: "पनवेल",
-    stationNameEnglish: "PANVEL",
-    stationNameMarathi: "पनवेल",
-  },
-  destination: {
-    stationCode: "D",
-    stationNameHindi: "कर्जत",
-    stationNameEnglish: "KARJAT",
-    stationNameMarathi: "कर्जत",
-  },
-  price: 20,
-  via: "DIVA",
-  distance: "80 km",
-  travelTime: 120,
-},
+ 
 
   {
     id: 4,
@@ -169,6 +151,25 @@ const stationRoutes: Route[] = [
     distance: "68 km",
     travelTime: 50,
   },
+{
+  id: 8,
+  source: {
+    stationCode: "S",
+    stationNameHindi: "पनवेल",
+    stationNameEnglish: "PANVEL",
+    stationNameMarathi: "पनवेल",
+  },
+  destination: {
+    stationCode: "D",
+    stationNameHindi: "कर्जत",
+    stationNameEnglish: "KARJAT",
+    stationNameMarathi: "कर्जत",
+  },
+  price: 20,
+  via: "DIVA",
+  distance: "80 km",
+  travelTime: 120,
+},
 ];
 
 
