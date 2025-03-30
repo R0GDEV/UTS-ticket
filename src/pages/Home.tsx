@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { SketchPicker } from "react-color";
 interface Station {
   stationCode: string;
@@ -15,11 +15,14 @@ interface Route {
   distance: string;
   travelTime: number; // Travel time in minutes
 }
-const stationRoutes: Route[] = [
- 
 
+const githubRawUrl =
+  "https://raw.githubusercontent.com/R0GDEV/R0GDEV/refs/heads/main/stationRoutes.ts"; // Replace with actual URL
+
+// ✅ Default Data (Used if fetch fails)
+const defaultRoutes: Route[] = [
   {
-    id: 4,
+    id: 1,
     source: {
       stationCode: "S",
       stationNameHindi: "नवाडे रोड",
@@ -37,141 +40,7 @@ const stationRoutes: Route[] = [
     distance: "8 km",
     travelTime: 25,
   },
-  {
-    id: 1,
-    source: {
-      stationCode: "S",
-      stationNameHindi: "दिवा",
-      stationNameEnglish: "DIVA",
-      stationNameMarathi: "दिवा",
-    },
-    destination: {
-      stationCode: "D",
-      stationNameHindi: "छ. शिवाजी महा. ट.",
-      stationNameEnglish: "C SHIVAJI MAH T",
-      stationNameMarathi: "छ. शिवाजी महा ट",
-    },
-    price: 15,
-    via: "CLA",
-    distance: "43 km",
-    travelTime: 60,
-  },
-  {
-    id: 2,
-    source: {
-      stationCode: "S",
-      stationNameHindi: "खारघर",
-      stationNameEnglish: "KHARGHAR",
-      stationNameMarathi: "खारघर",
-    },
-    destination: {
-      stationCode: "D",
-      stationNameHindi: "राबाडा",
-      stationNameEnglish: "RABADA",
-      stationNameMarathi: "राबाडा",
-    },
-    price: 10,
-    via: "JNJ-TUH",
-    distance: "18 km",
-    travelTime: 40,
-  },
-  {
-    id: 3,
-    source: {
-      stationCode: "S",
-      stationNameHindi: "दिवा",
-      stationNameEnglish: "DIVA",
-      stationNameMarathi: "दिवा",
-    },
-    destination: {
-      stationCode: "D",
-      stationNameHindi: "ठाणे",
-      stationNameEnglish: "THANE",
-      stationNameMarathi: "ठाणे",
-    },
-    price: 5,
-    via: "------",
-    distance: "10 km",
-    travelTime: 25,
-  },
-  {
-    id: 5,
-    source: {
-      stationCode: "S",
-      stationNameHindi: "पनवेल",
-      stationNameEnglish: "PANVEL",
-      stationNameMarathi: "पनवेल",
-    },
-    destination: {
-      stationCode: "D",
-      stationNameHindi: "ठाणे",
-      stationNameEnglish: "THANE",
-      stationNameMarathi: "ठाणे",
-    },
-    price: 15,
-    via: "JNJ-TUH",
-    distance: "27 km",
-    travelTime: 40,
-  },
-  {
-    id: 6,
-    source: {
-      stationCode: "S",
-      stationNameHindi: "छ. शिवाजी महा. ट.",
-      stationNameEnglish: "C SHIVAJI MAH T",
-      stationNameMarathi: "छ. शिवाजी महा ट",
-    },
-    destination: {
-      stationCode: "D",
-      stationNameHindi: "पनवेल",
-      stationNameEnglish: "PANVEL",
-      stationNameMarathi: "पनवेल",
-    },
-    price: 20,
-    via: "CLA",
-    distance: "49 km",
-    travelTime: 50,
-  },
-  {
-    id: 7,
-    source: {
-      stationCode: "S",
-      stationNameHindi: "छ. शिवाजी महा. ट.",
-      stationNameEnglish: "C SHIVAJI MAH T",
-      stationNameMarathi: "छ. शिवाजी महा ट",
-    },
-    destination: {
-      stationCode: "D",
-      stationNameHindi: "पनवेल",
-      stationNameEnglish: "PANVEL",
-      stationNameMarathi: "पनवेल",
-    },
-    price: 25,
-    via: "TNA-TUH-JNJ",
-    distance: "68 km",
-    travelTime: 50,
-  },
-{
-  id: 8,
-  source: {
-    stationCode: "S",
-    stationNameHindi: "पनवेल",
-    stationNameEnglish: "PANVEL",
-    stationNameMarathi: "पनवेल",
-  },
-  destination: {
-    stationCode: "D",
-    stationNameHindi: "कर्जत",
-    stationNameEnglish: "KARJAT",
-    stationNameMarathi: "कर्जत",
-  },
-  price: 20,
-  via: "DIVA",
-  distance: "80 km",
-  travelTime: 120,
-},
 ];
-
 
 
 const today = new Date();
@@ -200,9 +69,11 @@ const StationInfo1: React.FC<{ station: Station }> = ({ station }) => (
 
 const Home: React.FC = () => {
 
+  const [routes, setRoutes] = useState<Route[]>(defaultRoutes);
+  const [error, setError] = useState<string | null>(null);
   const [numAdults, setNumAdults] = useState(1);
   const [isEditing, setIsEditing] = useState(false);
-  const [selectedRoute, setSelectedRoute] = useState(stationRoutes[0]);
+  const [selectedRoute, setSelectedRoute] = useState<Route>(defaultRoutes[0]);
   const [isSwapped, setIsSwapped] = useState<boolean>(false);
   const [isJourney, setIsJourney] = useState(true);
   const totalPrice = selectedRoute.price * numAdults * (isJourney ? 1 : 2);
@@ -216,23 +87,40 @@ const Home: React.FC = () => {
     setIsSwapped(!isSwapped);
     setSelectedRoute((prevRoute) => ({
       ...prevRoute,
-      source: {
-        ...prevRoute.source,
-        stationNameHindi: prevRoute.destination.stationNameHindi,
-        stationNameEnglish: prevRoute.destination.stationNameEnglish,
-        stationNameMarathi: prevRoute.destination.stationNameMarathi,
-      },
-      destination: {
-        ...prevRoute.destination,
-        stationNameHindi: prevRoute.source.stationNameHindi,
-        stationNameEnglish: prevRoute.source.stationNameEnglish,
-        stationNameMarathi: prevRoute.source.stationNameMarathi,
-      },
+      source: { ...prevRoute.destination },
+      destination: { ...prevRoute.source },
     }));
   };
   const handleBlur = () => {
     setShowPicker(false);
   };
+
+  // Fetch Routes
+  const fetchRoutes = useCallback(async () => {
+    try {
+      const response = await fetch(githubRawUrl);
+      if (!response.ok) throw new Error(`Failed to fetch: ${response.statusText}`);
+
+      const tsContent = await response.text(); // Get TypeScript file as text
+
+      // Extract only the array from the raw TypeScript file
+      const extractedArray = new Function(`return ${tsContent}`)(); // Avoid using eval()
+
+      // console.log("Fetched Routes:", extractedArray);
+      setRoutes(extractedArray);
+      setSelectedRoute(extractedArray[0]); // Update selected route
+      // console.log(extractedArray);
+      setError(null); // Clear error on success
+    } catch (error) {
+      // console.error("Error fetching routes:", error.message);
+      setError("Failed to load data. Showing default routes.");
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchRoutes();
+  }, [fetchRoutes]);
+
 
   return (
     <div>
@@ -266,7 +154,7 @@ const Home: React.FC = () => {
             </div>
           </div>
           <div className=" mx-auto bg-white shadow-md rounded-lg overflow-none mt-4">
-         
+
             {/* Header */}
             <div className="bg-sky-400" style={{ backgroundColor: bgColor }}>
               <div className="font-bold p-4 pb-1">
@@ -281,16 +169,13 @@ const Home: React.FC = () => {
                             onChange={(color) => setBgColor(color.hex)}
                             disableAlpha={true}
                             presetColors={[
-                              "#FF0000", // Red
-                              "#00FF00", // Green
-                              "#0000FF", // Blue
                               "#FFFF00", // Yellow
-                             " #38BDF8",
-                             "#60A5FA",
+                              "#38BDF8",
+                              "#60A5FA",
+                              "#8C8CD8",
                               "#800080", // Purple
                               "#FFFFFF", // White
                               "#bbf7d0",
-
                             ]}
                           />
                         </div>
@@ -335,25 +220,43 @@ const Home: React.FC = () => {
                     <select
                       value={selectedRoute.id}
                       onChange={(e) =>
-                        setSelectedRoute(stationRoutes.find(route => route.id === Number(e.target.value)) || stationRoutes[0])
+                        setSelectedRoute(routes.find(route => route.id === Number(e.target.value)) || routes[0])
                       }
                       className="border border-gray-400 rounded px-2 py-1 w-full"
                     >
-                      {stationRoutes.map((route) => (
+                      {routes.map((route) => (
                         <option key={route.id} value={route.id}>
                           {route.source.stationNameEnglish} TO {route.destination.stationNameEnglish}
                         </option>
                       ))}
                     </select>
-                    <label className="flex items-center mt-2">
-                      <input
-                        type="checkbox"
-                        checked={isSwapped}
-                        onChange={handleSwapToggle}
-                        className="mr-2"
-                      />
-                      Swap
-                    </label>
+                    <div className="flex items-center justify-between rounded-lg">
+                      {/* Checkbox & Swap Label */}
+                      <div className="flex items-center space-x-2">
+                        <input
+                          type="checkbox"
+                          checked={isSwapped}
+                          onChange={handleSwapToggle}
+                          className="accent-blue-500"
+                        />
+                        <span className="font-medium">Swap</span>
+                      </div>
+
+                      {/* Error Message & Retry Button */}
+                      {error && (
+                        <div className="flex items-center text-red-500">
+                          <span className="text-sm">{error}</span>
+                          <button
+                            onClick={fetchRoutes}
+                            className="bg-blue-500 text-white px-3 my-1 rounded text-sm"
+                          >
+                            Try Again
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+
 
 
                   </>
