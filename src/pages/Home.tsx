@@ -176,6 +176,9 @@ const Home: React.FC = () => {
                               "#800080", // Purple
                               "#FFFFFF", // White
                               "#bbf7d0",
+ "#B49B9B",
+ "#5BECEC",
+
                             ]}
                           />
                         </div>
