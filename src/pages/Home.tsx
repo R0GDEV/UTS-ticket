@@ -1,20 +1,27 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { SketchPicker } from "react-color";
+import left_side from "./left_side.png";
+import right_side from "./right_side.png";
+
+
 interface Station {
   stationCode: string;
   stationNameHindi: string;
   stationNameEnglish: string;
   stationNameMarathi: string;
 }
+
+
 interface Route {
   id: number;
   source: Station;
   destination: Station;
-  price: number;
+  price: number | Record<ClassKey, number>; // 👈 supports both
   via: string;
   distance: string;
   travelTime: number; // Travel time in minutes
 }
+
 
 const githubRawUrl =
   "https://raw.githubusercontent.com/R0GDEV/R0GDEV/refs/heads/main/stationRoutes.ts"; // Replace with actual URL
@@ -35,7 +42,7 @@ const defaultRoutes: Route[] = [
       stationNameEnglish: "PANVEL",
       stationNameMarathi: "पनवेल",
     },
-    price: 5,
+    price: { SECOND: 5, FIRST: 25 },
     via: "KLMC",
     distance: "8 km",
     travelTime: 25,
@@ -66,6 +73,23 @@ const StationInfo1: React.FC<{ station: Station }> = ({ station }) => (
   </div>
 );
 
+type ClassKey = "FIRST" | "SECOND";
+
+function normalizePrice(price: number | { SECOND: number; FIRST: number }) {
+  if (typeof price === "number") {
+    // If the old schema (number) is used, simply use that number
+    // for both classes, effectively "skipping calculation"
+    return {
+      SECOND: price,
+      FIRST: price,
+    };
+  }
+
+  // new schema (object) → return as-is
+  return price;
+}
+
+
 
 const Home: React.FC = () => {
 
@@ -76,7 +100,17 @@ const Home: React.FC = () => {
   const [selectedRoute, setSelectedRoute] = useState<Route>(defaultRoutes[0]);
   const [isSwapped, setIsSwapped] = useState<boolean>(false);
   const [isJourney, setIsJourney] = useState(true);
-  const totalPrice = selectedRoute.price * numAdults * (isJourney ? 1 : 2);
+  
+  // 🔹 Always get normalized version of selectedRoute
+  const normalizedRoute = useMemo(() => ({
+    ...selectedRoute,
+    price: normalizePrice(selectedRoute.price),
+  }), [selectedRoute]);
+
+  const [selectedClass, setSelectedClass] = useState<ClassKey>("SECOND");
+
+  const totalPrice = normalizedRoute.price[selectedClass] * numAdults * (isJourney ? 1 : 2);
+
   const [bgColor, setBgColor] = useState("#bbf7d0"); // Default background color
   const [showPicker, setShowPicker] = useState(false);
   const handleEditClick = () => {
@@ -121,6 +155,25 @@ const Home: React.FC = () => {
     fetchRoutes();
   }, [fetchRoutes]);
 
+// Helper function to extract a recognizable short name
+const getShortName = (name: string): string => {
+  // 1. Handle common acronyms/abbreviations explicitly
+  if (name.includes("SHIVAJI MAH T")) return "CSMT"; // A common abbreviation
+  if (name.includes("TERMINUS")) return name.split(' ')[0] + " T"; // E.g., 'KALYAN TERMINUS' -> 'KALYAN T'
+
+  const words = name.split(' ');
+  // 2. If the first word is short (e.g., 'C' or 'A'), use the first two words
+  if (words.length > 1 && words[0].length <= 2) {
+    return `${words[0]} ${words[1]}`; // E.g., "C SHIVAJI"
+  }
+  
+  // 3. Otherwise, use the first word (e.g., "PANVEL")
+  return words[0];
+};
+  const classOptions: Record<ClassKey, { hi: string; en: string; short: string }> = {
+    FIRST: { hi: "प्रथम", en: "FIRST", short: "प्र श्रे" },
+    SECOND: { hi: "द्वितीय", en: "SECOND", short: "द्वि श्रे" },
+  };
 
   return (
     <div>
@@ -133,14 +186,14 @@ const Home: React.FC = () => {
           <div className="relative flex items-center justify-between mt-2 px-4">
             {/* Left Image */}
             <img
-              src="https://cms.indianrail.gov.in/CMSREPORT/JSPRWD/BootSnipp/dist/img/cris.png"
+              src={left_side}
               alt="Left"
               className="relative z-10 w-8 h-8 object-cover rounded-full"
             />
 
             {/* Right Image */}
             <img
-              src="https://cms.indianrail.gov.in/CMSREPORT/JSPRWD/BootSnipp/dist/img/IR.png"
+              src={right_side}
               alt="Right"
               className="relative z-10 w-8 h-8 object-cover rounded-full cursor-pointer"
               onClick={handleEditClick}
@@ -176,8 +229,8 @@ const Home: React.FC = () => {
                               "#800080", // Purple
                               "#FFFFFF", // White
                               "#bbf7d0",
- "#B49B9B",
- "#5BECEC",
+                              "#B49B9B",
+                              "#5BECEC",
 
                             ]}
                           />
@@ -220,19 +273,30 @@ const Home: React.FC = () => {
               <div className=" px-4">
                 {isEditing && (
                   <>
-                    <select
-                      value={selectedRoute.id}
-                      onChange={(e) =>
-                        setSelectedRoute(routes.find(route => route.id === Number(e.target.value)) || routes[0])
-                      }
-                      className="border border-gray-400 rounded px-2 py-1 w-full"
-                    >
-                      {routes.map((route) => (
-                        <option key={route.id} value={route.id}>
-                          {route.source.stationNameEnglish} TO {route.destination.stationNameEnglish}
-                        </option>
-                      ))}
-                    </select>
+                   <select
+  value={selectedRoute.id}
+  onChange={(e) =>
+    setSelectedRoute(routes.find(route => route.id === Number(e.target.value)) || routes[0])
+  }
+  className="border border-gray-400 rounded px-2 py-1 w-full"
+>
+{routes.map((route) => {
+    const displayPrice = normalizePrice(route.price);
+    
+    // Use the improved short name logic
+    const sourceName = getShortName(route.source.stationNameEnglish);
+    const destName = getShortName(route.destination.stationNameEnglish);
+
+    return (
+      <option key={route.id} value={route.id}>
+        {/* Route: Short Source → Short Destination */}
+        {sourceName} → {destName}
+        {/* Via and Price remain the same compact format */}
+        {` (v.${route.via}) | ₹${displayPrice.FIRST}/${displayPrice.SECOND}`}
+      </option>
+    );
+  })}
+</select>
                     <div className="flex items-center justify-between rounded-lg">
                       {/* Checkbox & Swap Label */}
                       <div className="flex items-center space-x-2">
@@ -287,11 +351,24 @@ const Home: React.FC = () => {
                 <div className="grid grid-cols-2 pt-[4px] text-base">
                   <div className="flex items-center">
                     <div className="text-base h-[64px] flex items-center mr-1">CLASS:</div>
-                    <div className="flex flex-col font-bold items-start">
-                      <div className="w-14">द्वितीय</div>
-                      <div className="w-14 ont-bold">SECOND</div>
-                      <div className="w-14">द्वि श्रे</div>
-                    </div>
+                    {isEditing ? (
+                      // --- Edit Mode: show dropdown ---
+                      <select
+                        value={selectedClass}
+                        onChange={(e) => setSelectedClass(e.target.value as ClassKey)}
+                        className="border rounded px-2 py-1 text-sm"
+                      >
+                        <option value="FIRST">प्रथम / FIRST / प्र श्रे</option>
+                        <option value="SECOND">द्वितीय / SECOND / द्वि श्रे</option>
+                      </select>
+                    ) : (
+                      // --- View Mode: show stacked format ---
+                      <div className="flex flex-col font-bold items-start">
+                        <div className="w-14">{classOptions[selectedClass].hi}</div>
+                        <div className="w-14">{classOptions[selectedClass].en}</div>
+                        <div className="w-14">{classOptions[selectedClass].short}</div>
+                      </div>
+                    )}
                   </div>
                   <div className="flex items-center">
                     <div className="text-base h-[64px] flex items-center mr-1">TRAIN TYPE:</div>
