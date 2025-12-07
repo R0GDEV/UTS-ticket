@@ -179,8 +179,6 @@ const getShortName = (name: string): string => {
     <div>
       <div className=" w-full">
 
-        <div className=" bg-orange-500 h-8 w-full"> </div>
-
         <div className=" px-4 shadow-lg rounded-lg overflow-hidden ">
 
           <div className="relative flex items-center justify-between mt-2 px-4">
